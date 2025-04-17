@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Agrégateur d'Annonces - Leboncoin & eBay</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .announce-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .loading-spinner {
+            border-top-color: #3b82f6;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .price-tag {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(59, 130, 246, 0.9);
+            color: white;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .platform-tag {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background-color: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow-lg">
+        <div class="container mx-auto px-4 py-6">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="flex items-center mb-4 md:mb-0">
+                    <i class="fas fa-search-dollar text-3xl mr-3"></i>
+                    <h1 class="text-2xl font-bold">Magnet </h1>
+                </div>
+                <div class="w-full md:w-1/2">
+                    <div class="relative">
+                        <input type="text" id="searchInput" placeholder="Rechercher des voitures, meubles, etc..." 
+                               class="w-full px-4 py-3 rounded-lg text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-400">
+                        <button id="searchButton" class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-700 hover:bg-blue-800 text-white px-4 py-1 rounded-lg">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="container mx-auto px-4 py-8">
+        <!-- Filters Section -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h2 class="text-lg font-semibold text-gray-700">Filtrer les résultats</h2>
+                </div>
+                <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4 w-full md:w-auto">
+                    <div class="flex items-center">
+                        <label for="minPrice" class="mr-2 text-gray-600">Prix min:</label>
+                        <input type="number" id="minPrice" placeholder="€" class="px-3 py-1 border rounded-md w-20">
+                    </div>
+                    <div class="flex items-center">
+                        <label for="maxPrice" class="mr-2 text-gray-600">Prix max:</label>
+                        <input type="number" id="maxPrice" placeholder="€" class="px-3 py-1 border rounded-md w-20">
+                    </div>
+                    <div class="flex items-center">
+                        <label for="location" class="mr-2 text-gray-600">Localisation:</label>
+                        <input type="text" id="location" placeholder="Ville" class="px-3 py-1 border rounded-md">
+                    </div>
+                    <div class="flex items-center">
+                        <label for="platform" class="mr-2 text-gray-600">Plateforme:</label>
+                        <select id="platform" class="px-3 py-1 border rounded-md">
+                            <option value="all">Toutes</option>
+                            <option value="leboncoin">Leboncoin</option>
+                            <option value="ebay">eBay</option>
+                            <option value="facebook">Facebook Marketplace</option>
+                            <option value="gumtree">Gumtree</option>
+                            <option value="kijiji">Kijiji</option>
+                            <option value="vinted">Vinted</option>
+                            <option value="backmarket">BackMarket</option>
+                            <option value="rakuten">Rakuten</option>
+                            <option value="etsy">Etsy</option>
+                            <option value="amazon">Amazon Marketplace</option>
+                            <option value="aliexpress">AliExpress</option>
+                            <option value="fnac">FNAC Marketplace</option>
+                            <option value="cdiscount">Cdiscount</option>
+                            <option value="priceminister">Rakuten PriceMinister</option>
+                            <option value="geev">Geev</option>
+                            <option value="donnons">Donnons.org</option>
+                            <option value="seloger">Seloger (immobilier)</option>
+                            <option value="pap">PAP (immobilier)</option>
+                            <option value="avito">Avito (Maroc)</option>
+                            <option value="jumiache">Jumiache</option>
+                        </select>
+                    </div>
+                    <button id="applyFilters" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-1 rounded-md">
+                        Appliquer
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Results Section -->
+        <div id="loadingIndicator" class="hidden flex justify-center items-center py-12">
+            <div class="loading-spinner h-12 w-12 border-4 border-blue-200 rounded-full"></div>
+        </div>
+
+        <div id="resultsContainer">
+            <div id="announcementsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <!-- Les annonces seront injectées ici par JavaScript -->
+            </div>
+            <div id="noResults" class="hidden text-center py-12">
+                <i class="fas fa-exclamation-circle text-4xl text-gray-400 mb-4"></i>
+                <h3 class="text-xl font-semibold text-gray-600">Aucun résultat trouvé</h3>
+                <p class="text-gray-500 mt-2">Essayez de modifier vos critères de recherche</p>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div id="pagination" class="flex justify-center mt-8 hidden">
+            <button id="prevPage" class="px-4 py-2 mx-1 rounded-md bg-gray-200 hover:bg-gray-300 disabled:opacity-50">
+                <i class="fas fa-chevron-left"></i> Précédent
+            </button>
+            <div class="flex">
+                <!-- Les numéros de page seront injectés ici -->
+            </div>
+            <button id="nextPage" class="px-4 py-2 mx-1 rounded-md bg-gray-200 hover:bg-gray-300 disabled:opacity-50">
+                Suivant <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between">
+                <div class="mb-6 md:mb-0">
+                    <h3 class="text-xl font-bold mb-4">Agrégateur d'Annonces</h3>
+                    <p class="text-gray-400">Trouvez les meilleures offres et annonces du web en un seul endroit.</p>
+                </div>
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Fonctionnalités</h4>
+                    <ul class="space-y-2">
+                        <li><a href="#" class="text-gray-400 hover:text-white">Recherche avancée</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Filtres personnalisés</a></li>
+                        <li><a href="#" class="text-gray-400 hover:text-white">Alertes email</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400">
+                <p>© 2025 Magnet. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Alert Modal -->
+    <div id="alertModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold">Créer une alerte</h3>
+                <button id="closeAlertModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="alertEmail" class="block text-gray-700 mb-1">Email</label>
+                    <input type="email" id="alertEmail" class="w-full px-3 py-2 border rounded-md">
+                </div>
+                <div>
+                    <label for="alertQuery" class="block text-gray-700 mb-1">Recherche</label>
+                    <input type="text" id="alertQuery" class="w-full px-3 py-2 border rounded-md">
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" id="alertPriceDrop" class="mr-2">
+                    <label for="alertPriceDrop" class="text-gray-700">Me prévenir en cas de baisse de prix</label>
+                </div>
+                <button id="saveAlert" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-md">
+                    Enregistrer l'alerte
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Variables globales
+        let currentPage = 1;
+        const itemsPerPage = 12;
+        let allAnnouncements = [];
+        let filteredAnnouncements = [];
+
+        // Éléments DOM
+        const searchInput = document.getElementById('searchInput');
+        const searchButton = document.getElementById('searchButton');
+        const minPrice = document.getElementById('minPrice');
+        const maxPrice = document.getElementById('maxPrice');
+        const location = document.getElementById('location');
+        const platform = document.getElementById('platform');
+        const applyFilters = document.getElementById('applyFilters');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+        const announcementsGrid = document.getElementById('announcementsGrid');
+        const noResults = document.getElementById('noResults');
+        const pagination = document.getElementById('pagination');
+        const prevPage = document.getElementById('prevPage');
+        const nextPage = document.getElementById('nextPage');
+        const alertModal = document.getElementById('alertModal');
+        const closeAlertModal = document.getElementById('closeAlertModal');
+        const saveAlert = document.getElementById('saveAlert');
+
+        // Événements
+        searchButton.addEventListener('click', performSearch);
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') performSearch();
+        });
+        applyFilters.addEventListener('click', applyFiltersAndSearch);
+        prevPage.addEventListener('click', goToPrevPage);
+        nextPage.addEventListener('click', goToNextPage);
+        closeAlertModal.addEventListener('click', () => alertModal.classList.add('hidden'));
+        saveAlert.addEventListener('click', saveAlertHandler);
+
+        // Fonction pour effectuer une recherche
+        async function performSearch() {
+            const query = searchInput.value.trim();
+            if (!query) return;
+
+            loadingIndicator.classList.remove('hidden');
+            announcementsGrid.innerHTML = '';
+            noResults.classList.add('hidden');
+            pagination.classList.add('hidden');
+
+            try {
+                // Simuler une requête API (dans un vrai projet, vous feriez une requête fetch vers votre backend)
+                // Pour cette démo, nous utilisons des données simulées
+                await simulateApiCall(query);
+                
+                // Appliquer les filtres initiaux
+                applyFiltersAndSearch();
+            } catch (error) {
+                console.error('Erreur lors de la recherche:', error);
+                showError();
+            } finally {
+                loadingIndicator.classList.add('hidden');
+            }
+        }
+
+        // Fonction pour simuler un appel API (à remplacer par une vraie requête fetch)
+        async function simulateApiCall(query) {
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    // Générer des données simulées pour la démo
+                    allAnnouncements = generateMockData(query);
+                    resolve();
+                }, 1000);
+            });
+        }
+
+        // Fonction pour générer des données simulées
+        function generateMockData(query) {
+            const mockData = [];
+            const platforms = ['leboncoin', 'ebay'];
+            const locations = ['Paris', 'Lyon', 'Marseille', 'Toulouse', 'Bordeaux'];
+            const categories = ['Voiture', 'Meuble', 'Électronique', 'Vêtement', 'Immobilier'];
+            
+            for (let i = 0; i < 50; i++) {
+                const randomPlatform = platforms[Math.floor(Math.random() * platforms.length)];
+                const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+                const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+                const randomPrice = Math.floor(Math.random() * 2000) + 50;
+                
+                mockData.push({
+                    id: i + 1,
+                    title: `${query} ${randomCategory} ${i + 1}`,
+                    price: randomPrice,
+                    image: `https://picsum.photos/300/200?random=${i}`,
+                    location: randomLocation,
+                    platform: randomPlatform,
+                    url: `https://${randomPlatform}.com/item/${i + 1}`,
+                    date: new Date(Date.now() - Math.floor(Math.random() * 7 * 24 * 60 * 60 * 1000)).toLocaleDateString()
+                });
+            }
+            
+            return mockData;
+        }
+
+        // Fonction pour appliquer les filtres et effectuer une recherche
+        function applyFiltersAndSearch() {
+            const minPriceValue = parseFloat(minPrice.value) || 0;
+            const maxPriceValue = parseFloat(maxPrice.value) || Infinity;
+            const locationValue = location.value.trim().toLowerCase();
+            const platformValue = platform.value;
+            
+            filteredAnnouncements = allAnnouncements.filter(announcement => {
+                // Filtre par prix
+                if (announcement.price < minPriceValue || announcement.price > maxPriceValue) {
+                    return false;
+                }
+                
+                // Filtre par localisation
+                if (locationValue && !announcement.location.toLowerCase().includes(locationValue)) {
+                    return false;
+                }
+                
+                // Filtre par plateforme
+                if (platformValue !== 'all' && announcement.platform !== platformValue) {
+                    return false;
+                }
+                
+                return true;
+            });
+            
+            currentPage = 1;
+            displayResults();
+        }
+
+        // Fonction pour afficher les résultats
+        function displayResults() {
+            announcementsGrid.innerHTML = '';
+            
+            if (filteredAnnouncements.length === 0) {
+                noResults.classList.remove('hidden');
+                pagination.classList.add('hidden');
+                return;
+            }
+            
+            noResults.classList.add('hidden');
+            
+            // Calculer les éléments à afficher pour la page actuelle
+            const startIndex = (currentPage - 1) * itemsPerPage;
+            const endIndex = Math.min(startIndex + itemsPerPage, filteredAnnouncements.length);
+            const announcementsToShow = filteredAnnouncements.slice(startIndex, endIndex);
+            
+            // Afficher les annonces
+            announcementsToShow.forEach(announcement => {
+                const announcementCard = createAnnouncementCard(announcement);
+                announcementsGrid.appendChild(announcementCard);
+            });
+            
+            // Mettre à jour la pagination
+            updatePagination();
+        }
+
+        // Fonction pour créer une carte d'annonce
+        function createAnnouncementCard(announcement) {
+            const card = document.createElement('div');
+            card.className = 'announce-card bg-white rounded-lg shadow-md overflow-hidden relative transition-all duration-300 hover:cursor-pointer';
+            
+            // Image
+            const imgContainer = document.createElement('div');
+            imgContainer.className = 'relative h-48 overflow-hidden';
+            
+            const img = document.createElement('img');
+            img.src = announcement.image;
+            img.alt = announcement.title;
+            img.className = 'w-full h-full object-cover';
+            
+            // Tag de prix
+            const priceTag = document.createElement('div');
+            priceTag.className = 'price-tag';
+            priceTag.textContent = `${announcement.price}€`;
+            
+            // Tag de plateforme
+            const platformTag = document.createElement('div');
+            platformTag.className = 'platform-tag';
+            platformTag.textContent = announcement.platform === 'leboncoin' ? 'Leboncoin' : 'eBay';
+            
+            imgContainer.appendChild(img);
+            imgContainer.appendChild(priceTag);
+            imgContainer.appendChild(platformTag);
+            
+            // Contenu
+            const content = document.createElement('div');
+            content.className = 'p-4';
+            
+            const title = document.createElement('h3');
+            title.className = 'font-semibold text-lg mb-2 truncate';
+            title.textContent = announcement.title;
+            
+            const details = document.createElement('div');
+            details.className = 'flex justify-between text-sm text-gray-600';
+            
+            const locationSpan = document.createElement('span');
+            locationSpan.className = 'flex items-center';
+            locationSpan.innerHTML = `<i class="fas fa-map-marker-alt mr-1"></i> ${announcement.location}`;
+            
+            const dateSpan = document.createElement('span');
+            dateSpan.className = 'flex items-center';
+            dateSpan.innerHTML = `<i class="far fa-calendar-alt mr-1"></i> ${announcement.date}`;
+            
+            details.appendChild(locationSpan);
+            details.appendChild(dateSpan);
+            
+            // Boutons d'action
+            const actions = document.createElement('div');
+            actions.className = 'flex justify-between mt-4';
+            
+            const viewButton = document.createElement('a');
+            viewButton.href = announcement.url;
+            viewButton.target = '_blank';
+            viewButton.className = 'bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-md text-sm flex items-center';
+            viewButton.innerHTML = `<i class="fas fa-external-link-alt mr-1"></i> Voir`;
+            
+            const alertButton = document.createElement('button');
+            alertButton.className = 'bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded-md text-sm flex items-center';
+            alertButton.innerHTML = `<i class="fas fa-bell mr-1"></i> Alerte`;
+            alertButton.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showAlertModal(announcement);
+            });
+            
+            actions.appendChild(viewButton);
+            actions.appendChild(alertButton);
+            
+            content.appendChild(title);
+            content.appendChild(details);
+            content.appendChild(actions);
+            
+            card.appendChild(imgContainer);
+            card.appendChild(content);
+            
+            // Ajouter un événement de clic pour ouvrir l'annonce
+            card.addEventListener('click', () => {
+                window.open(announcement.url, '_blank');
+            });
+            
+            return card;
+        }
+
+        // Fonction pour mettre à jour la pagination
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredAnnouncements.length / itemsPerPage);
+            
+            if (totalPages <= 1) {
+                pagination.classList.add('hidden');
+                return;
+            }
+            
+            pagination.classList.remove('hidden');
+            
+            // Bouton précédent
+            prevPage.disabled = currentPage === 1;
+            
+            // Bouton suivant
+            nextPage.disabled = currentPage === totalPages;
+            
+            // Numéros de page
+            const pageNumbersContainer = pagination.querySelector('.flex');
+            pageNumbersContainer.innerHTML = '';
+            
+            const maxVisiblePages = 5;
+            let startPage, endPage;
+            
+            if (totalPages <= maxVisiblePages) {
+                startPage = 1;
+                endPage = totalPages;
+            } else {
+                const halfVisible = Math.floor(maxVisiblePages / 2);
+                
+                if (currentPage <= halfVisible + 1) {
+                    startPage = 1;
+                    endPage = maxVisiblePages;
+                } else if (currentPage >= totalPages - halfVisible) {
+                    startPage = totalPages - maxVisiblePages + 1;
+                    endPage = totalPages;
+                } else {
+                    startPage = currentPage - halfVisible;
+                    endPage = currentPage + halfVisible;
+                }
+            }
+            
+            // Bouton "..." pour le début si nécessaire
+            if (startPage > 1) {
+                const ellipsisStart = document.createElement('span');
+                ellipsisStart.className = 'px-4 py-2 mx-1';
+                ellipsisStart.textContent = '...';
+                pageNumbersContainer.appendChild(ellipsisStart);
+            }
+            
+            // Boutons de page
+            for (let i = startPage; i <= endPage; i++) {
+                const pageButton = document.createElement('button');
+                pageButton.className = `px-4 py-2 mx-1 rounded-md ${i === currentPage ? 'bg-blue-600 text-white' : 'bg-gray-200 hover:bg-gray-300'}`;
+                pageButton.textContent = i;
+                pageButton.addEventListener('click', () => {
+                    currentPage = i;
+                    displayResults();
+                });
+                pageNumbersContainer.appendChild(pageButton);
+            }
+            
+            // Bouton "..." pour la fin si nécessaire
+            if (endPage < totalPages) {
+                const ellipsisEnd = document.createElement('span');
+                ellipsisEnd.className = 'px-4 py-2 mx-1';
+                ellipsisEnd.textContent = '...';
+                pageNumbersContainer.appendChild(ellipsisEnd);
+            }
+        }
+
+        // Fonction pour aller à la page précédente
+        function goToPrevPage() {
+            if (currentPage > 1) {
+                currentPage--;
+                displayResults();
+            }
+        }
+
+        // Fonction pour aller à la page suivante
+        function goToNextPage() {
+            const totalPages = Math.ceil(filteredAnnouncements.length / itemsPerPage);
+            if (currentPage < totalPages) {
+                currentPage++;
+                displayResults();
+            }
+        }
+
+        // Fonction pour afficher une erreur
+        function showError() {
+            announcementsGrid.innerHTML = '';
+            noResults.classList.remove('hidden');
+            noResults.querySelector('h3').textContent = 'Erreur lors de la recherche';
+            noResults.querySelector('p').textContent = 'Veuillez réessayer plus tard';
+            pagination.classList.add('hidden');
+        }
+
+        // Fonction pour afficher le modal d'alerte
+        function showAlertModal(announcement) {
+            document.getElementById('alertQuery').value = announcement.title.split(' ').slice(0, 2).join(' ');
+            alertModal.classList.remove('hidden');
+        }
+
+        // Fonction pour enregistrer une alerte
+        function saveAlertHandler() {
+            const email = document.getElementById('alertEmail').value.trim();
+            const query = document.getElementById('alertQuery').value.trim();
+            const priceDrop = document.getElementById('alertPriceDrop').checked;
+            
+            if (!email || !query) {
+                alert('Veuillez remplir tous les champs obligatoires');
+                return;
+            }
+            
+            // Ici, vous feriez une requête à votre backend pour enregistrer l'alerte
+            console.log('Alerte enregistrée:', { email, query, priceDrop });
+            
+            // Fermer le modal et afficher un message de succès
+            alertModal.classList.add('hidden');
+            alert('Alerte enregistrée avec succès! Vous recevrez un email lorsque de nouvelles annonces correspondant à votre recherche seront disponibles.');
+        }
+
+        // Initialisation - Charger des données par défaut au démarrage
+        window.addEventListener('DOMContentLoaded', () => {
+            searchInput.value = 'voiture';
+            performSearch();
+        });
+    </script>
+</body>
+</html>
